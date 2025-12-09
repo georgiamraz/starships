@@ -1142,14 +1142,14 @@ def plot_small_steps(tr, iord, xlim=None, masking_limit=0.8, fig_name='',
     
     
 def plot_helium(tr, spec_fin_out, spec_fin, spec_fin_Sref, vrp=None,
-                spec_fin_ts=None, add_RVsys=False, scale_y=1., iin=None, RV=0):
+                spec_fin_ts=None, add_RVsys=False, scale_y=1., iin=None, RV=0,iord=8):
 
     he_lines = [1.083206, 1.083322, 1.083331]
     
     if iin is None:
         iin = tr.iIn
         
-    if ~isinstance(RV, u.Quantity):
+    if not isinstance(RV, u.Quantity):
         RV = RV*u.km/u.s
     
 #     if add_RVsys is True : 
@@ -1158,12 +1158,15 @@ def plot_helium(tr, spec_fin_out, spec_fin, spec_fin_Sref, vrp=None,
 #         vrp = tr.vrp + RV
     if vrp is None:
         vrp = tr.vrp
+    
+    if not isinstance(vrp, u.Quantity):
+        vrp = vrp * u.km / u.s  
         
     wave_shift_he = he_lines[0] * (1+((vrp+RV)/const.c).decompose())
     wave_shift_he2 = he_lines[1] * (1+((vrp+RV)/const.c).decompose())
     wave_shift_he3 = he_lines[2] * (1+((vrp+RV)/const.c).decompose())
 
-    iord=8
+    # iord=8
 
     # ----- 1D -------
     
@@ -1227,6 +1230,9 @@ def plot_helium(tr, spec_fin_out, spec_fin, spec_fin_Sref, vrp=None,
     # plt.axvline(he_lines[2], color='orange',alpha=0.7)
 
 #     plt.show()
+
+
+
 
 
 def plot_detection_snrs(t, interp_grid_map, min_val_map, snrs_map, VMRs, Teq, id_cloud):
@@ -1428,8 +1434,8 @@ def plot_ttest_map_hist(tr, corrRV, correlation, Kp_array, RV_array, sigma, ttes
             else:
                 plt.plot(vrp+wind+limit_out, np.arange(tr.n_spec),'r')
 
-            plt.axhline(tr.iIn[0],linestyle='--',color='white')
-            plt.axhline(tr.iIn[-1],linestyle='--',color='white')
+            # plt.axhline(tr.iIn[0],linestyle='--',color='white')
+            # plt.axhline(tr.iIn[-1],linestyle='--',color='white')
 
 
 
@@ -1829,8 +1835,8 @@ def plot_night_summary_NIRPS(list_tr, obs, markers=['o','s','d'],
     ax[2].legend(loc='best', fontsize=12, ncol = 2) #, bbox_to_anchor=(0.9, 0.71)
     
     # plot H2O telluric pre-clean exponent
-    for i,tr in enumerate(list_tr):
-        ax[3].plot(tr.phase, obs.headers_tellu.get_all('TLPEH2O')[0], '-', marker=markers[i], color=colors[0])
+#     for i,tr in enumerate(list_tr):
+#         ax[3].plot(tr.phase, obs.headers_tellu.get_all('TLPEH2O')[0], '-', marker=markers[i], color=colors[0])
     
     ax[3].set_ylabel('Telluric exp. H2O', fontsize=16)
 #     ax[3].set_xlabel(r'Orbital phase ($\phi$)', fontsize=16)
@@ -1840,8 +1846,8 @@ def plot_night_summary_NIRPS(list_tr, obs, markers=['o','s','d'],
     ax[3].axvspan(phase_t2, phase_t2, alpha=0.4, label='Total Transit')
     
     # plot other tellurice pre-clean exponents
-    for i,tr in enumerate(list_tr):
-        ax[4].plot(tr.phase, obs.headers_tellu.get_all('TLPEOTR')[0], '-', marker=markers[i], color=colors[i])
+#     for i,tr in enumerate(list_tr):
+#         ax[4].plot(tr.phase, obs.headers_tellu.get_all('TLPEOTR')[0], '-', marker=markers[i], color=colors[i])
     
     ax[4].set_ylabel('Telluric exp. \nother species', fontsize=16)
     # ax[4].set_xlabel(r'Orbital phase ($\phi$)', fontsize=16)

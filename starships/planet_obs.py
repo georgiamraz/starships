@@ -174,16 +174,22 @@ def fits2wave(image, header):
 #     image = fits.getdata(filename, ext=1)
     # size of the image
     nbypix, nbxpix = image.shape
+    # print('nbypix, nbxpix', nbypix, nbxpix)
     # get the keys with the wavelength polynomials
     wave_hdr = header['WAVE0*']
+    # print('wave_hdr',wave_hdr)
     # concatenate into a numpy array
     wave_poly = np.array([wave_hdr[i] for i in range(len(wave_hdr))])
+    # print('wave_poly',wave_poly)
     # get the per-order wavelength solution
     wave_poly = wave_poly.reshape(nbypix, len(wave_poly) // nbypix)
+    # print('wave_poly',wave_poly)
     # project polynomial coefficiels
     wavesol = np.zeros_like(image)
+    # print('wavesol',wavesol)
     # get the pixel range
     xpix = np.arange(nbxpix)
+    # print('xpix',xpix)
     # loop around orders
     for order_num in range(nbypix):
         wavesol[order_num] = np.polyval(wave_poly[order_num][::-1], xpix)
@@ -245,6 +251,7 @@ def read_all_sp_spirou_apero(path, file_list, wv_default=None, blaze_default=Non
     Read all spectra
     Must have a list with all filename to read 
     """
+    print('i am using read_al_sp_spirou_apero')
 
     headers, count, wv, blaze = list_of_dict([]), [], [], []
     blaze_path = blaze_path or path
@@ -268,27 +275,41 @@ def read_all_sp_spirou_apero(path, file_list, wv_default=None, blaze_default=Non
             filenames.append(filename)
             hdul = fits.open(path / Path(filename))
 
-            if ver06 is False: # --- for V0.6 data ---
-                header = hdul[0].header
+            if ver06 is False: # --- for V0.6 data ---Now this is for V0.7 Georgia
+                #georgia changed hdul[0] to header=hdul[1] for data challenge
+                header = hdul[1].header
+                # print(header)
+                # print(hdul[1])
                 image = hdul[1].data
+                # print(image)
             else:
                 header = hdul[0].header
                 image = hdul[0].data
 
             headers.append(header)
             count.append(image)
+            # print('count',count)
+            # print('i am debugging')
+            # print('image',image.shape)
+            # print('image',image.shape)
+
 
             try:
                 wv_file = wv_default or hdul[0].header['WAVEFILE']
                 with fits.open(path / Path(wv_file)) as f:
-                    wvsol = f[0].data
+                    wvsol = f[1].data
             except (KeyError,FileNotFoundError) as e:
                 if cheby is False:
+                    # print('using fits2wave')
                     wvsol = fits2wave(image, header)
+                    # print('header',header)
+                    # print('image',image)
                 else:
+                    # print('using fits2wavenew')
                     wvsol = fits2wavenew(image, header)
 #                 if debug:
-#                     print(wvsol)
+            # print('hi debug')
+            # print('wvsol',wvsol)
 
 #                 if blaze0 is None:
             try:
@@ -297,14 +318,16 @@ def read_all_sp_spirou_apero(path, file_list, wv_default=None, blaze_default=Non
                 blaze_file = header['CDBBLAZE']
 
             if ver06 is False:
+                # print('using ver06')
+                #georgia changed this to ext=0 from ext=1 for the data challenge
                 blaze0 = fits.getdata(blaze_path / Path(blaze_file), ext=1)
             else:
                 with fits.open(blaze_path / Path(blaze_file)) as f:
 #                         header = fits.getheader(filename, ext=0) 
                     blaze0 = f[0].data
-#                         print(blaze)
+                # print('blaze',blaze)
             blaze.append(blaze0)
-                
+            # print(wvsol)
             wv.append(wvsol/1000)
 
     return headers, np.array(wv), np.array(count), np.array(blaze), filenames
@@ -322,15 +345,17 @@ def read_all_sp_spirou_CADC(path,filename,file_list):
     count, wv, blaze, recon = [], [], [], []
     filenames = []
     # print(path)
-    with open(path+'/'+filename) as f:
+    # print(filename)
+    with open(path / filename) as f:
+
 
         for file in f:
             # print(file)
             filenames.append(file.split('\n')[0])
             # print(filenames)
             # print(file.split('\n')[0])
-            # print(path+'/'+file.split('\n')[0])
-            hdul = fits.open(path+'/'+file.split('\n')[0])
+            # print(path/file.split('\n')[0])
+            hdul = fits.open(path / file.split('\n')[0])
             # print(hdul)
             
             
@@ -831,6 +856,7 @@ class Observations():
             # if read function is not specified as an argument
             if not read_sp:
                 read_sp = self.instrument['read_all_sp']
+                # print(read_sp)
 
             if CADC:
 
@@ -872,17 +898,18 @@ class Observations():
                     log.info('Fetching data')
                     log.info(f"File: {list_tcorr}")
                     headers, wave, count, blaze, filenames = read_sp(path, list_tcorr, **kwargs)
-
+                    # print('count list corr',count)
                 #             self.headers = headers
                 #             self.wave = np.array(wv)
                 #             self.count = np.ma.masked_invalid(count)
                 #             self.blaze = np.ma.masked_array(blaze)
                 #             self.filenames  = filenames
 
-
+                # print('list recon',list_recon)
                 if list_recon is None:
                     log.info('No reconstruction available')
                     tellu = np.ones_like(count)
+
 
                 else:
                     log.info("Fetching the tellurics")
@@ -890,6 +917,7 @@ class Observations():
                     _, _, tellu, _, _ = read_sp(path, list_recon, **kwargs)
                     # tellu = read_sp(path, list_recon, input_type='recon', **kwargs)
 
+            # print('count',count)
             self.headers = headers
             self.wave = np.array(wave)
             self.count = np.ma.masked_invalid(count)
@@ -1261,6 +1289,7 @@ class Observations():
                                     clip_ts=clip_ts, clip_ratio=clip_ratio,
                                     poly_time=poly_time, counting = counting, **kwargs)
         
+        # print('build transspec',self.planet.RV_sys)
 #         self.n_comps = n_comps
 #         self.reconstructed = (self.blaze/np.nanmax(self.blaze, axis=-1)[:,:,None] * \
 #                               np.ma.median(self.fl_masked,axis=-1)[:,:,None] * \
@@ -1305,9 +1334,11 @@ class Observations():
     def norv_sequence(self, RV=None):
         
         if RV is None:
+            # print('RV is none',self.planet.RV_sys.value.copy())
             self.RV_sys = self.planet.RV_sys.value.copy()
         else:
             self.RV_sys = RV
+            # print('RV is defined',RV)
             
         self.berv = -self.berv0
         self.mid_id = int(np.ceil(self.n_spec/2)-1)
@@ -1318,7 +1349,7 @@ class Observations():
         self.berv = (self.berv-self.berv[self.mid_id])
         self.vr = (self.vr-self.vr[self.mid_id]).to(u.km / u.s).value
         self.vrp = (self.vrp-self.vrp[self.mid_id]).to(u.km / u.s).value
-        self.planet.RV_sys=0*u.km/u.s
+        self.planet.RV_sys=RV*u.km/u.s  #0*u.km/u.s #georgia Mraz fixed hard coded 0->Rv June 2nd 2025
 
         self.RV_const = self.mid_berv+self.mid_vr+self.RV_sys
 
@@ -1925,7 +1956,7 @@ def save_single_sequences(filename, tr, path='',
              final = tr.final,
              mask_spec_trans = tr.spec_trans.mask,
              mask_final = tr.final.mask,
-             # alpha_frac = tr.alpha_frac,
+             alpha_frac = tr.alpha_frac,
              filenames=tr.filenames,
              icorr = tr.icorr,
              bad_indexs = bad_indexs,
@@ -1958,7 +1989,7 @@ def save_single_sequences(filename, tr, path='',
              RV_const = tr.RV_const,
              params = tr.params,
              wave = tr.wave,
-             # vrp = tr.vrp,
+             vrp = tr.vrp,
              sep = tr.sep,
              noise = tr.noise,
              N = tr.N,
@@ -1986,7 +2017,7 @@ def save_single_sequences(filename, tr, path='',
              final = tr.final,
              mask_spec_trans = tr.spec_trans.mask,
              mask_final = tr.final.mask,
-             # alpha_frac = tr.alpha_frac,
+             alpha_frac = tr.alpha_frac,
                  filenames = tr.filenames,
              icorr = tr.icorr,
              bad_indexs = bad_indexs,
@@ -1999,8 +2030,8 @@ def save_single_sequences(filename, tr, path='',
                 kind_trans = tr.kind_trans,
                  coeffs = tr.coeffs,
                  ld_model = tr.ld_model,
-                 # iIn = tr.iIn,
-                 # iOut = tr.iOut,
+                 iIn = tr.iIn,
+                 iOut = tr.iOut,
              SNR = tr.SNR,
              nu = tr.nu,
              fl_norm = tr.fl_norm,
@@ -2190,6 +2221,7 @@ def load_single_sequences(filename, name, path='',
     gen_rv_sequence(tr, tr.planet, plot=False)
 
     tr.norv_sequence(RV=data_tr['RV_sys'])
+    # print('RV_sys',data_tr['RV_sys'])
 
     return tr
         
@@ -2509,6 +2541,7 @@ def gen_obs_sequence(obs, transit_tag, params_all, iOut_temp,
     else:
         tr = obs
     tr.calc_sequence(plot=False,  coeffs=coeffs, ld_model=ld_model, kind_trans=kind_trans)
+    # print('gen obss seq', RV_sys)
     tr.norv_sequence(RV=RV_sys)
 
     if polynome is not None:
@@ -2593,6 +2626,7 @@ def generate_all_transits(obs, transit_tags, RV_sys, params_all, iOut_temp,
 
             list_tr[name_tag] = gen_merge_obs_sequence(obs, list_tr, merge_tr_idx, transit_tags,
                                                coeffs, ld_model, kind_trans)
+    # print('RV_sys',RV_sys)
 
     return list_tr
 
@@ -2642,7 +2676,6 @@ def mask_custom_pclean_ord(tr, flux, pclean, ccf_pclean, corrRV0,
         #     print(iOrd)
         limit_mask = tr.params[0]
         #     flux_ord = flux[:,iOrd,None,:]
-
         _, rv_snr, _, snr_i, _ = calc_snr_1d(np.abs(ccf_pclean[:, iOrd]),
                                              corrRV0, np.zeros_like(tr.vrp), RV_sys=0.0)
 

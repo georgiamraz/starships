@@ -9,7 +9,9 @@ import traceback
 from multiprocessing import Pool
 from itertools import product
 import astropy.units as u
-
+from sys import path
+from pathlib import Path
+path.append("/home/gmraz/starships/")
 import pipeline.reduction as red
 import pipeline.make_model as mod
 import pipeline.correlations as corr
@@ -30,27 +32,34 @@ def main_loop(mask_tellu, mask_wings, n_pc, mol, config_dict, planet, obs, dirs_
                             dirs_dict['red_steps_dir'], n_pc, mask_tellu, mask_wings, visit_name)
 
     # perfoming classic ccf (translates model)
-    try:
-        nametag = f'_{visit_name}_{mol}_maskwings{mask_wings*100:n}_masktellu{mask_tellu*100:n}_pc{n_pc}'
-        corr.classic_ccf(config_dict, reduc, wave_mod, mod_spec, dirs_dict['classic_ccf_dir'], nametag) 
-    except TypeError:
-        print('Classic CCF could not be performed. Skipping...')
-        traceback.print_exc()
+    do_correlation = config_dict.get('do_correlation', False)
+    if do_correlation:
+        print("Running correlation...")
 
-    # performing injected ccf and saving the files
-    corr.perform_ccf(config_dict, reduc, mol, wave_mod, mod_spec, n_pc, mask_tellu, mask_wings, 
-                     dirs_dict['scratch_dir'], dirs_dict['injected_ccf_dir'], visit_name)
+        try:
+            nametag = f'_{visit_name}_{mol}_maskwings{mask_wings*100:n}_masktellu{mask_tellu*100:n}_pc{n_pc}'
+            corr.classic_ccf(config_dict, reduc, wave_mod, mod_spec, dirs_dict['classic_ccf_dir'], nametag) 
+        except TypeError:
+            print('Classic CCF could not be performed. Skipping...')
+            traceback.print_exc()
 
-    # combining visits
-    if (len(config_dict['visit_name']) > 1) and (visit_name == config_dict['visit_name'][-1]):
-        if ([mask_tellu, mask_wings, n_pc] == config_dict['night_params']):
-            try:
-                comb_dir_dict = red.set_save_location(config_dict['pl_name'], 'combined', 
-                                                    config_dict['reduction'], config_dict['instrument'])
-                corr.combined_visits_ccf(planet, mol, wave_mod, mod_spec, comb_dir_dict, config_dict)
-            except:
-                print('Could not combine visits. Skipping...')
-                traceback.print_exc()
+        # performing injected ccf and saving the files
+        corr.perform_ccf(config_dict, reduc, mol, wave_mod, mod_spec, n_pc, mask_tellu, mask_wings, 
+                         dirs_dict['scratch_dir'], dirs_dict['injected_ccf_dir'], visit_name)
+    
+            
+        # combining visits
+        if (len(config_dict['visit_name']) > 1) and (visit_name == config_dict['visit_name'][-1]):
+            if ([mask_tellu, mask_wings, n_pc] == config_dict['night_params']):
+                try:
+                    comb_dir_dict = red.set_save_location(config_dict['pl_name'], 'combined', 
+                                                        config_dict['reduction'], config_dict['instrument'])
+                    corr.combined_visits_ccf(planet, mol, wave_mod, mod_spec, comb_dir_dict, config_dict)
+                except:
+                    print('Could not combine visits. Skipping...')
+                    traceback.print_exc()
+    else:
+         print("Skipping Cross-Correlation...")
 
 def main_loop_wrapper(*args):
     ''' Wrapper function to pass multiple arguments to the main loop. '''
@@ -135,7 +144,7 @@ def injection_recovery(config_dict, planet, obs, mol, dirs_dict, visit_name, wav
     config_dict_new['n_pc'] = [n_pc]
 
     # make a new planet and obs object using the injected filed
-    planet_new, obs_new = red.load_planet(config_dict_new, visit_name)
+    planet_new, obs_new = red.load_planet(config_dict_new, visit_name,Cheby=True)
 
     main_loop(mask_tellu, mask_wings, n_pc, mol, config_dict_new, planet_new, obs_new, dirs_dict_new, 
             visit_name, wave_mod, mod_spec)
@@ -169,7 +178,7 @@ def run_pipe(config_filepath, run_name):
     for visit_name in config_dict['visit_name']:
         print('Running night:' + visit_name)
         # creating the planet and observation objects
-        planet, obs = red.load_planet(config_dict, visit_name)
+        planet, obs = red.load_planet(config_dict, visit_name, CADC=False,Cheby=True)
 
         # if multiple mid_tr have been given, use the one for that visit
         # note: this is working, just commented out because yaml files have not been updated yet

@@ -119,7 +119,7 @@ def pl_param_units(config_dict):
     return pl_kwargs
 
 
-def load_planet(config_dict, visit_name):
+def load_planet(config_dict, visit_name,Cheby,CADC):
     
     # All the observations must be listed in files.
     # We need the e2ds, the telluric corrected and the reconstructed spectra.
@@ -145,7 +145,7 @@ def load_planet(config_dict, visit_name):
     p.sync_equat_rot_speed = (2*np.pi*p.R_pl/p.period).to(u.km/u.s)
 
     # Get the data
-    obs.fetch_data(config_dict['obs_dir'], **list_filenames, CADC = True)
+    obs.fetch_data(config_dict['obs_dir'], **list_filenames,cheby=True, CADC=False,list_recon=None)
 
     # new_mask = obs.count.mask | (obs.count < 400.)
     # obs.flux = np.ma.array(obs.flux, mask=new_mask)
@@ -206,8 +206,8 @@ def save_pl_sig(list_tr, nametag, scratch_dir, bad_indexs=[]):
 def reduction_plots(config_dict, obs, list_tr, n_pc, path_fig, nametag): 
     visit_list = [list_tr]  # You could put multiple visits in the same figure
 
-    if n_pc == config_dict['n_pc'][0]:
-        pf.plot_night_summary_NIRPS(visit_list, obs, path_fig=str(path_fig.parent.parent) + '/', fig_name='')
+    # if n_pc == config_dict['n_pc'][0]:
+    #     pf.plot_night_summary_NIRPS(visit_list, obs, path_fig=str(path_fig.parent.parent) + '/', fig_name='')
 
     sequence_obj = list_tr
 

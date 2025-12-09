@@ -2188,6 +2188,19 @@ def quick_inject_clean(wave, flux, P_x, P_y, dv_pl, sep, R_star, A_star,
         - If 'transmission': fraction of the stellar disk hidden by the planet
         - If 'emission': fraction of the planetary disk not hidden by the star
     """
+    # print("wave:", wave)
+    # print("flux:", flux)
+    # print("P_x:", P_x)
+    # print("P_y:", P_y)
+    # print("dv_pl:", dv_pl)
+    # print("sep:", sep)
+    # print("R_star:", R_star)
+    # print("A_star:", A_star)
+    # print("R0:", R0)
+    # print("RV:", RV)
+    # print("dv_star:", dv_star)
+    # print("alpha:", alpha)
+    # print("kind_trans:", kind_trans)
 
     _, nord, _ = flux.shape
 #     wv = np.mean(wave, axis=0)
@@ -2221,12 +2234,42 @@ def quick_inject_clean(wave, flux, P_x, P_y, dv_pl, sep, R_star, A_star,
             fct = interp1d_masked(P_x[iOrd], P_y[iOrd], kind='cubic', fill_value='extrapolate')
             # - Evaluating on spirou grid while shifting
             P_depth_shift[:, iOrd, :] = fct(wave[:, iOrd] / shifts[:,None])   # shifts1 / shifts2
-            
+        
+
+        # print("masked_P_depth_shift_ test calc",(1. - alpha[:,None]*np.ma.masked_invalid(P_depth_shift[:, iOrd, :])) * flux[:, iOrd, :])
         # - Adding the planet contribution 
         if kind_trans == "transmission":
             flux_inj[:, iOrd, :] = (1. - alpha[:,None] * np.ma.masked_invalid(P_depth_shift[:, iOrd, :])) * flux[:, iOrd, :] 
+            # print("flux_per_order",flux_inj[:, iOrd, :])
         elif kind_trans == "emission":
             flux_inj[:, iOrd, :] = (1. + alpha[:,None] * np.ma.masked_invalid(P_depth_shift[:, iOrd, :])) * flux[:, iOrd, :] 
+    
+    # plt.figure(figsize=(10, 6))
+    # plt.plot(P_x.flatten(), P_y.flatten(), label='Injected Flux')
+    # plt.xlabel('Wavelength')
+    # plt.ylabel('P_y')
+    # # plt.title('Injected Flux')
+    # plt.legend()
+    # plt.show()
+
+    # plt.figure(figsize=(10, 6))
+    # plt.plot(wave.flatten(), flux.flatten(), label='Injected Flux')
+    # plt.xlabel('Wavelength')
+    # plt.ylabel('Flux')
+    # plt.title('Injected Flux')
+    # plt.legend()
+    # plt.show()
+
+    # # Plot the injected flux
+    # plt.figure(figsize=(10, 6))
+    # plt.plot(wave.flatten(), flux_inj.flatten(), label='Injected Flux')
+    # plt.xlabel('Wavelength')
+    # plt.ylabel('Flux')
+    # plt.title('Injected Flux')
+    # plt.legend()
+    # plt.show()
+
+    # print("P_depth_shift:", P_depth_shift)
 
     return np.ma.masked_invalid(flux_inj), P_depth_shift
 

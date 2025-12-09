@@ -98,26 +98,33 @@ class Correlations():
                   N=None, nolog=None, alpha=None, inj_alpha='ones', kind_obj='seq',
                   std_robust=True, **kwargs):
         
+        # print('icorr in cc', icorr)
         if orders is None:
             orders = list(np.arange(49))
         if icorr is None:
             if kind_obj == 'seq':
-                icorr = data_obj.icorr
+                # icorr = data_obj.icorr
+                icorr = icorr
+
             elif kind_obj == 'dict':
                 try:
                     icorr = data_obj['icorr']
                 except KeyError:
                     icorr = data_obj['trall_icorr']
         if alpha is None:
+            # print('ALPHA IS NONE')
             if inj_alpha =='alpha':
                 if kind_obj == 'seq':
-                    alpha = np.ones_like(data_obj.alpha_frac)
+                    # alpha = np.ones_like(data_obj.alpha_frac)
+                    alpha = np.ones_like(alpha_frac)
+
                 elif kind_obj == 'dict':
                     try:
                         alpha = np.ones_like(data_obj['alpha_frac'])
                     except KeyError:
                         alpha = np.ones_like(data_obj['trall_alpha_frac'])
             elif inj_alpha == 'ones':
+                # print('using ones')
                 if kind_obj == 'seq':
                     alpha = data_obj.alpha_frac
                 elif kind_obj == 'dict':
@@ -125,6 +132,8 @@ class Correlations():
                         alpha = data_obj['alpha_frac']
                     except KeyError:
                         alpha = data_obj['trall_alpha_frac']
+        
+        # print('alpha early',alpha)
 
         self.std_data = np.nanmedian(np.abs(self.data - np.nanmedian(self.data, axis=3)[:, :,:,None]), axis=3)[:, :,:,None] / 0.6745
         if std_robust:
@@ -135,6 +144,10 @@ class Correlations():
         self.logl0 = np.nansum( data[:, orders], axis=1)
         self.logl = corr.sum_logl( data, icorr, orders, N, alpha=alpha,
                                   axis=0, del_idx=index, nolog=nolog, **kwargs)
+        
+        # print('self.logl_0',self.logl0[1])
+        # print('self.logl',self.logl)
+
         
     def calc_logl_snr(self, n_pca=None, **kwargs):
 
@@ -151,7 +164,7 @@ class Correlations():
         else:
             self.courbe = self.logl.squeeze()
 
-
+        print('calling from logl_ssnr')
         self.get_snr_1d(**kwargs)
         self.find_max()
 
@@ -164,12 +177,13 @@ class Correlations():
         lstyles = ['-','--','-.',':']
 
         self.interp_grid = self.rv_grid
-#         print(self.interp_grid)
+        # print(self.interp_grid)
         
         if logl is None:
+            # print('logl.self',self.logl)
             logl = self.logl
         
-#         print(logl)
+        # print(logl)
         
         val = []
         pos = []
@@ -196,11 +210,12 @@ class Correlations():
                     self.courbe = logl[:, i].squeeze()
             else:
                 self.courbe = logl.squeeze()
-
+            
             self.get_snr_1d(max_rv=max_rv, **kwargs)
             
 #             print(self.courbe, max_rv)
 #             if kind == 'courbe':
+            # print('hi',RV_sys)
             self.get_snr_1d(max_rv=max_rv, **kwargs)
 #             self.snr=self.courbe
 #             print(self.snr[[0,-1]])
@@ -391,7 +406,7 @@ class Correlations():
 
             if kind == 'logl_corr':
                 sum_ccf[i] = np.ma.masked_invalid(np.ma.sum(shifted_ccf, axis=0)).squeeze()
-                print(ccf.shape)
+                # print(ccf.shape)
 
             elif kind == "logl_sig":
                 nolog_L_sig = np.ma.masked_invalid(np.ma.sum(shifted_ccf, axis=0)).squeeze()
@@ -467,40 +482,53 @@ class Correlations():
         
         self.find_max( **kwargs)
         
-        
     def get_snr_1d(self, interp_grid=None, courbe=None, rv_limit=8, 
-                   RV_sys=0, plot=False, debug=False, max_rv=None, add_mask=None): #
+                   RV_sys=0, plot=True, debug=False, max_rv=None, add_mask=None): #
         
+        # print('hi snr_id wtf',RV_sys)
+        # print('hi snr_idplanet',tr.RV_sys)
+
         if interp_grid is None:
             interp_grid = self.interp_grid
         else:
             self.interp_grid = interp_grid
         if courbe is None:
+
+            # print('self.courbe',self.courbe)
             courbe = self.courbe
         else:
             self.courbe = courbe
             
         if debug is True:
+            print('debug is on')
             plt.figure()
             plt.plot(interp_grid, self.courbe)
             
         if max_rv is not None:
+            print('max_rv is not None')
             id_sub = (interp_grid <= max_rv) | (interp_grid >= -max_rv)
             interp_grid = interp_grid[id_sub]
             courbe = courbe[id_sub]
 
         idx_bruit = (interp_grid < RV_sys - rv_limit) | (interp_grid > RV_sys + rv_limit)
+        print('snr RVSYS',RV_sys)
         idx_bruit0 = idx_bruit.copy()
+
         if add_mask is not None:
+            print('add_mask is on')
             idx_bruit &= ((interp_grid < add_mask[0] - add_mask[1]) | (interp_grid > add_mask[0] + add_mask[1]))
-        
+    
         if plot is True:
+            # print('tried first plot')
             plt.figure()
             plt.plot(interp_grid, courbe)
+            # print('courbe', courbe)
             plt.plot(interp_grid[idx_bruit], courbe[idx_bruit])
         
         self.idx_bruit_rv = idx_bruit
         self.idx_bruit_rv0 = idx_bruit0
+        
+        # print('courbe[idx_bruit]', courbe[idx_bruit])
         bruit = np.ma.std(courbe[idx_bruit])
         self.bruit = bruit
         self.snr = (courbe - np.ma.mean(courbe[idx_bruit])) / np.ma.masked_invalid(bruit)
@@ -514,6 +542,10 @@ class Correlations():
     def calc_correl_snr_1d(self, tr, Kp=None, icorr=None, limit_shift=60, interp_size=201, 
                            RV_sys=0, rv_limit=8, plot=True, RV = 0., RV_shift=0,
                            vrp_kind = 't', vrp_orb=None, vr_orb=None):
+        
+        
+        print('calc_corel',RV_sys)
+        print('calc_corel',RV)
 
         if isinstance(RV_sys, u.Quantity):
             RV_sys = (RV_sys.to(u.km / u.s)).value
@@ -1830,8 +1862,9 @@ def plot_ccf_timeseries(t, rv_star, correlation, plot_gauss=True, plot_spline=Tr
 def plot_ccflogl(tr, ccf_map, logl_map, corrRV0, Kp_array, n_pcas,
                  swapaxes=None, orders=np.arange(49), map=False, id_pc0=None, RV_limit=None,
                  indexs=None, icorr=None, RV=0.0, split_fig=False, std_robust=True,
-                 fig_name=None, path_fig=None, vlines=[0], param = 'pc', plot_prf = True, **kwargs):
+                 fig_name=None, path_fig=None, vlines=[0], param = 'pc', plot_prf = True,alpha=None, **kwargs):
     
+    # print('logl_map',logl_map)
     dir_dict = None
     if isinstance(path_fig, dict): dir_dict = path_fig.copy()
 
@@ -1850,26 +1883,34 @@ def plot_ccflogl(tr, ccf_map, logl_map, corrRV0, Kp_array, n_pcas,
 
     ccf_obj = Correlations(ccf_map, kind="logl", rv_grid=corrRV0,
                                     n_pcas=n_pcas, kp_array=Kp_array)
-    ccf_obj.calc_logl(tr, orders=orders, index=indexs, N=None, nolog=False, icorr=icorr, std_robust=std_robust)
+    
+    print("Icorr before calc_logl",icorr)
+    ccf_obj.calc_logl(tr, orders=orders, index=indexs, N=None, nolog=False, icorr=icorr, std_robust=std_robust,alpha=alpha)
     
     logl_obj = Correlations(logl_map, kind="logl", rv_grid=corrRV0,
                                     n_pcas=n_pcas, kp_array=Kp_array)
-    logl_obj.calc_logl(tr, orders=orders, index=indexs, N=tr.N, nolog=True,  icorr=icorr, std_robust=std_robust)
+    print('logl_obj', logl_obj)
+    
+    #georgia added the alpha=alpha when debugging for the data challenge
+    logl_obj.calc_logl(tr, orders=orders, index=indexs, N=tr.N, nolog=True,  icorr=icorr, std_robust=std_robust,alpha=alpha)
     
     # plotting the multi-param plots
     if dir_dict != None: path_fig = str(dir_dict['param_dir']) + '/'
+    # print('ccflogl',RV)
+    # print('ccflogl tr',tr.RV_sys)
 
     fig, axs = plt.subplots(3, 2, figsize=(15, 15))
+    ccf_obj.plot_multi_npca(RV_sys=RV, title='CCF SNR', vlines=vlines, fig_name = 'SNR', path_fig=None, param = param, axs = [axs[0,0], axs[0,1]])
 
-    ccf_obj.plot_multi_npca(RV_sys=RV, title='CCF SNR', vlines=vlines, fig_name = 'SNR' + fig_name, path_fig=None, param = param, axs = [axs[0,0], axs[0,1]])
+    # ccf_obj.plot_multi_npca(RV_sys=RV, title='CCF SNR', vlines=vlines, fig_name = 'SNR' + fig_name, path_fig=None, param = param, axs = [axs[0,0], axs[0,1]])
 
-    logl_obj.plot_multi_npca(RV_sys=RV, kind='courbe', kind_courbe='abs', title='logL abs', vlines=vlines, fig_name = 'abs' + fig_name, path_fig=None, param = param,  axs = [axs[1,0], axs[1,1]])
+    logl_obj.plot_multi_npca(RV_sys=RV, kind='courbe', kind_courbe='abs', title='logL abs', vlines=vlines, fig_name = 'abs' , path_fig=None, param = param,  axs = [axs[1,0], axs[1,1]])
     logl_obj.plot_multi_npca(RV_sys=RV, kind='courbe', kind_courbe='bic',
-                                title=r'$\log_{10} \Delta$ BIC', vlines=vlines, fig_name = 'BIC' + fig_name, path_fig=None, param = param,  axs = [axs[2,0], axs[2,1]])
+                                title=r'$\log_{10} \Delta$ BIC', vlines=vlines, fig_name = 'BIC', path_fig=None, param = param,  axs = [axs[2,0], axs[2,1]])
 
     if param != None: 
         plt.tight_layout()
-        plt.savefig(str(path_fig) + f'fig_multi_{param}'+fig_name+'.pdf')
+        plt.savefig(str(path_fig) + f'fig_multi_{param}.pdf')
 
         print(ccf_obj.npc_val)
         print(logl_obj.npc_max_abs)
@@ -1900,6 +1941,8 @@ def plot_ccflogl(tr, ccf_map, logl_map, corrRV0, Kp_array, n_pcas,
                               icorr=tr.iIn,
                               equal_var=False,  fig_name=label, path_fig=path_fig)
     elif plot_prf:
+        print('plotting prf')
+        # print(tr.RV_sys)
         for id_pc in range(len(n_pcas)):
             if fig_name is not None:
                 if len(fig_name) > 1:

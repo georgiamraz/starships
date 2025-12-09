@@ -5,6 +5,8 @@ import pipeline.reduction as red
 from pathlib import Path
 from scipy.interpolate import interp1d
 from astropy.io import fits
+import starships.planet_obs as pl_obs
+
 
 def plot_scaled_model(wave_mod, mod_spec, mod_spec_scaled, path_fig):
     plt.figure(figsize = (10, 4), dpi = 200)
@@ -36,6 +38,8 @@ def main(config_dict, p, obs, visit_name, wave_mod, mod_spec, scratch_dir = None
     # getting the lightcurve
     exp_times = obs.t
     lightcurve = obs.alpha
+    # print(lightcurve)
+    # print(np.shape(lightcurve))
 
     # create the window function to scale the model 
     Wc = lightcurve / np.max(lightcurve)
@@ -44,6 +48,7 @@ def main(config_dict, p, obs, visit_name, wave_mod, mod_spec, scratch_dir = None
     v_sys = p.RV_sys
     v_orb = obs.vrp
     berv = obs.berv
+    # config_dict['scaling_factor']=1
 
     # Scale the inputted model
     mod_spec_scaled = (mod_spec - (p.R_pl / p.R_star)**2)* config_dict['scaling_factor']
@@ -74,7 +79,7 @@ def main(config_dict, p, obs, visit_name, wave_mod, mod_spec, scratch_dir = None
         wave_mod_shifted = wave_mod * (1 + v_shift / 299792.458)
 
         # setup a funciton to interpolate over the model
-        interp_wavelength = interp1d(wave_mod_shifted, mod_spec_scaled, kind='cubic')
+        interp_wavelength = interp1d(wave_mod_shifted, mod_spec_scaled, kind='cubic',fill_value="extrapolate")
         
         if debug:
             # plot each exposure
@@ -84,19 +89,32 @@ def main(config_dict, p, obs, visit_name, wave_mod, mod_spec, scratch_dir = None
         hdul = fits.open(str(config_dict['obs_dir'])+'/'+exp.strip())
 
         count = hdul[1].data
-        wv = hdul[2].data / 1000
+        header = hdul[0].header
+        
+        wv = pl_obs.fits2wavenew(count, header)
+        
+        # wv = hdul[2].data  / 1000
         
         # iterate over the wavelength bits
         for w in range(len(wv)):
 
             if debug:
                 # plot original 
+                
                 if w == 0: plt.plot(wv[w], count[w], label='Original')
                 else: plt.plot(wv[w], count[w])
+                
+            # print(wv[w])
+            # print(len(wv))
+            # print(len(Wc))
             
-            # interpolate the model to the wavelength, and scale by the lightcurve
+            # Assume you have your wavelengths (wv) and corresponding data (Wc)
+            # interp_wavelength = interp1d(wv, Wc, fill_value="extrapolate")
+            # print(wv)
             mod_interp = 1 - interp_wavelength(wv[w]) * Wc[i]
-
+            
+            # mod_interp = 1 - interp_wavelength(wv[w]) * Wc[i]
+            
             # multiply the count by the model in that range
             new_count = count[w] * mod_interp
 
@@ -108,6 +126,7 @@ def main(config_dict, p, obs, visit_name, wave_mod, mod_spec, scratch_dir = None
                 if w == 0: plt.plot(wv[w], hdul[1].data[w], label='Injected', color = 'blue', zorder = 0)
                 else: plt.plot(wv[w], hdul[1].data[w], color = 'blue', zorder = 0)
                 
+            plt.plot(wv[w], hdul[1].data[w], color = 'blue', zorder = 0)
         # save to new fits file with same name, in new folder
         hdul.writeto(str(scratch_dir / exp.strip()), overwrite=True)
 

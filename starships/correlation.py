@@ -164,7 +164,9 @@ def sum_logl(loglbl, icorr, orders, N, alpha=None, axis=0, del_idx=None,
     (e.g. Brogi 2019, 2 possible versions of Gibson 2020).
     When `nolog`=True, the Bro.
     """
-
+    # print(' i am using the sum logl')
+    # print('loglbl', loglbl)
+    # print('icorr',icorr)
     if orders is None:
         orders = slice(None)
 
@@ -174,11 +176,18 @@ def sum_logl(loglbl, icorr, orders, N, alpha=None, axis=0, del_idx=None,
 
     else:
         correlation = loglbl.copy()
+    
+    # print('correlation', correlation)
+
     if alpha is not None:
+        # print('alpha',alpha)
         while alpha.ndim != loglbl.ndim:
             alpha = np.expand_dims(alpha, axis=1)
+            # print('alpha dims',alpha)
         correlation = correlation * alpha#[:,None,None,None,None,None]
-        
+    
+        # print('correlation', correlation)
+
     if scaling is not None:
 #         scaling = np.ones(loglbl.shape[1])
         scaling = scaling[None,:]
@@ -223,13 +232,14 @@ def sum_logl(loglbl, icorr, orders, N, alpha=None, axis=0, del_idx=None,
             #*alpha[icorr][:, orders]
 #             print('Is nan everywhere?', np.isnan(logL_sum).all())
     else:
-
+        # print('correlation', correlation)
+        # print('correlation[icorr]', correlation[icorr])
         nologL_sum_i =  np.ma.masked_invalid( np.nansum( np.nansum( correlation[icorr][:, orders] \
                                                                    , axis=axis), axis=axis))
 #         print('somme des L_i', nologL_i.shape) 
-
+        # print('nologlsum',nologL_sum_i)
         logL_sum =  nolog2log( nologL_sum_i, N[icorr][:,orders], sum_N=True)
-        
+        # print('logL_sum',logL_sum)
 #         print(np.isnan(logL_sum).all(),np.isnan(logL_sum).sum())
 #         print('log des somme des L', logL_sum.shape)
         if verbose:  
@@ -415,7 +425,10 @@ def calc_log_likelihood_grid_retrieval(RV, data_tr, planet, wave_mod, model, flu
 def gen_model_sequence_noinj(velocities, data_wave=None, data_sep=None, data_pca=None, data_npc=None, #data_noise,
                              planet=None, model_wave=None, model_spec=None, #resol=64000,norm=True,debug=False,
                             alpha=None, data_tr=None, data_recon=None,  **kwargs):
-    """
+    
+    # print("alpha shap",np.shape(alpha))
+    # print('using no inj',planet.RV_sys)
+    """'
     alpha: np.ndarray of shape (n_spec,)
         Fraction of planetary signal. Depends on `kind_trans`:
         - If 'transmission': fraction of the stellar disk hidden by the planet
@@ -446,10 +459,12 @@ def gen_model_sequence_noinj(velocities, data_wave=None, data_sep=None, data_pca
     flux_inj, _ = quick_inject_clean(data_wave, data_recon,
                                                   model_wave, model_spec, 
                                                  velocities, data_sep, planet.R_star, planet.A_star, 
-                                                                  RV=0.0, dv_star=0., 
+                                                                  RV=planet.RV_sys, dv_star=0., 
                                                  R0 = planet.R_pl, alpha=alpha, **kwargs)
    
     # -- Remove the same number of pcas that were used to inject
+    # print("flux_inj shape",flux_inj.shape)
+    # print("flux_inj",flux_inj)
     model_seq = build_trans_spectrum_mod_fast(flux_inj, data_pca, n_pca=data_npc)
 
     return model_seq
@@ -487,6 +502,7 @@ def unload_data(data_obj, kind_obj,
 
         if pca is None:
             pca= data_obj['pca']
+            
 
         if final is None:
             final = data_obj['final']   
@@ -512,6 +528,8 @@ def unload_data(data_obj, kind_obj,
         wave, vrp, icorr, clip_ts = data_obj['wave'], data_obj['vrp'], data_obj['icorr'], data_obj['clip_ts']
         t_start, RV_const, sep =  data_obj['t_start'], data_obj['RV_const'], data_obj['sep']
 #         nu =data_obj['nu']
+        # print('RV const',RV_const)
+        # print('dataobssj',data_obj['RV_sys'])
         
     if kind_obj == 'seq':
         if spec_trans is None:
@@ -572,6 +590,8 @@ def calc_logl_injred(data_obj, kind_obj, planet, Kp_array, corrRV, n_pcas, wave_
     logl_BL_sig = np.ma.zeros((n_spec, nord, Kp_array.size, corrRV.size, len(n_pcas), models.shape[0]))
 
     print('Starting with {} PCs'.format(params0[5]))
+    # print('planet RV2',planet.RV_sys)
+
     params = params0.copy()
     for n, n_pc in enumerate(n_pcas):
 #         print('n',n)
@@ -584,6 +604,7 @@ def calc_logl_injred(data_obj, kind_obj, planet, Kp_array, corrRV, n_pcas, wave_
 
             # --- Will recompute the final transmission spectrum from spec_trans and pca 
             # --- (the rest is ignored)
+            # print('planet RV,hi',planet.RV_sys)
             final, rebuilt, pca,  = build_trans_spectrum4(wave, spec_trans,   #_, _, _, mask_last, _
                                      vrp, planet.RV_sys, vrp, icorr, tellu=spec_trans, noise=noise, 
                                     lim_mask=params[0], lim_buffer=params[1],
@@ -596,7 +617,8 @@ def calc_logl_injred(data_obj, kind_obj, planet, Kp_array, corrRV, n_pcas, wave_
                                 iOut_temp='all', cont=False)[6:9]
 
             N = (~np.isnan(final)).sum(axis=-1)
-            
+            # print('planet RV2',data_obj.RV_sys)
+
             if change_noise is True:
                 print('Calculating noise with {} PCs'.format(params[5]))
                 sig_col = np.ma.std(final, axis=0)[None,:,:]  #self.final  # self.spec_trans
@@ -610,6 +632,7 @@ def calc_logl_injred(data_obj, kind_obj, planet, Kp_array, corrRV, n_pcas, wave_
                 data_obj.params = params
                 # params0 = params
                 data_obj.N = N
+                print('data_obj',data_obj.pca)
             elif kind_obj == 'dict':
                 data_obj['params'] = params
                 # params0 = params
@@ -650,12 +673,16 @@ def calc_logl_injred(data_obj, kind_obj, planet, Kp_array, corrRV, n_pcas, wave_
                                                 n_pc, i+1,len(Kp_array),Kpi, f+1, models.shape[0], v+1,corrRV.size))
                     
                     velocities = vrad + vrp_orb - vr_orb + RV_const
+                    print('PCA',pca)
+
                     model_seq = gen_model_sequence_noinj(velocities, 
                                          wave, sep, pca, int(params[5]),
+                                        #  planet, wave_mod, specMod, 
                                          planet, wave_mod[20:-20], specMod[20:-20], 
                                          kind_trans=kind_trans, alpha=alpha, #resol=resol,
                                                          **kwargs)
-    
+                    print('PCA',pca)
+
 #                     model_seq = gen_model_sequence_retrieval([RV, vrp_orb-vr_orb, data_tr['RV_const']], data_tr, 
 #                                                              planet, wave_mod[20:-20], specMod[20:-20], 
 #                                                         kind_trans=kind_trans, alpha=alpha, #resol=resol,

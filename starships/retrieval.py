@@ -1572,6 +1572,10 @@
 import os
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
+import os
+from sys import path
+path.append('/home/gmraz/starships')
+
 from pathlib import Path
 import yaml
 import logging
@@ -1693,6 +1697,7 @@ global limP
 global n_pts
 global star_spectrum
 
+print('made it to Retrieval.py...finished imports')
 
 def convert_to_quantity(quantity_dict):
     """

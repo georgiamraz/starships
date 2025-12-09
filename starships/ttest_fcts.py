@@ -82,7 +82,7 @@ def t_test_hist(sample1, sample2, label1, label2, title, ax=None, nb_x_gauss=101
         print('No gaussian fit found')
 #     print(param)
 
-#     print(sample2.size, sample1.size)
+    # print(sample2.size, sample1.size)
     x = np.linspace(np.nanmin(sample2), np.nanmax(sample2),101)
     n, bins, patches = ax.hist(x=sample1, color='limegreen', bins=bins,
                                 alpha=0.5, rwidth=0.85, weights=np.ones(len(sample1)) / len(sample1),

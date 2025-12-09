@@ -154,7 +154,13 @@ def create_internal_dict(config_dict, planet):
     int_dict['R_pl'] = planet.R_pl[0].to(u.R_jup).cgs.value
     int_dict['R_star'] = planet.R_star.to(u.R_sun).cgs.value
     int_dict['gravity'] = (const.G * planet.M_pl / (planet.R_pl) ** 2).cgs.value
+    int_dict['T_int']= config_dict['T_int']
+    int_dict['T_eq']= config_dict['T_eq']
 
+    #model params
+    int_dict['gamma']= config_dict['gamma']
+    int_dict['kappa_IR']= config_dict['kappa_IR']
+    
     return int_dict
 
 def prepare_model_high_or_low(config_model, int_dict, planet, atmo_obj=None, fct_star=None,
@@ -197,24 +203,92 @@ def prepare_model_high_or_low(config_model, int_dict, planet, atmo_obj=None, fct
     species = prepare_abundances(config_model, mode, species_dict)
    
 
-    # --- Generating the model
-    args = [int_dict[key] for key in ['pressures', 'temperatures', 'gravity', 'P0', 'p_cloud', 'R_pl', 'R_star']]
-    kwargs = dict(gamma_scat=config_model['gamma_scat'],
-                  kappa_factor=config_model['scat_factor'],
-                  C_to_O=config_model['C/O'],
-                    Fe_to_H=config_model['Fe/H'],
-                    specie_2_lnlst=config_model['linelist_names'][mode],
-                    kind_trans=config_model['kind_trans'],
-                    dissociation=config_model['dissociation'],
-                    fct_star=fct_star)
+#     # --- Generating the model
+#     args = [int_dict[key] for key in ['pressures', 'temperatures', 'gravity', 'P0', 'p_cloud', 'R_pl', 'R_star']]
+#     kwargs = dict(gamma_scat=config_model['gamma_scat'],
+#                   kappa_factor=config_model['scat_factor'],
+#                   C_to_O=config_model['C/O'],
+#                     Fe_to_H=config_model['Fe/H'],
+#                     specie_2_lnlst=config_model['linelist_names'][mode],
+#                     kind_trans=config_model['kind_trans'],
+#                     dissociation=config_model['dissociation'],
+#                     fct_star=fct_star)
 
-    # compute abundances
+#     # compute abundances
 
     
+#     if config_model['chemical_equilibrium'] == True:
+#         wv_out, model_out, abundances, MMW, VMR = prt.retrieval_model_plain(atmo_obj, species, planet,  config_model['TP_profile'],save_abundances = True, *args, **kwargs)
+    
+#     else: wv_out, model_out = prt.retrieval_model_plain(atmo_obj, species, planet,config_model['TP_profile'], abundances = abundances, MMW = MMW,  *args, **kwargs)
+    
+    temperatures = guillot_global(int_dict['pressures'], 
+                             config_model['kappa_IR'], 
+                             config_model['gamma'], 
+                             int_dict['gravity'], 
+                             config_model['T_int'], 
+                             config_model['T_eq'])
+    
+#     tp_profile = config_model['TP_profile']
+
+#     # Determine if TP profile is numeric or analytic
+#     if isinstance(tp_profile, (list, np.ndarray)):
+#         temperatures = np.array(tp_profile, dtype=float)
+#         chemical_equilibrium = config_model['chemical_equilibrium']
+#     else:
+#         # Analytic profile like "Guillot" — pass as string
+#         temperatures = tp_profile
+#         chemical_equilibrium = False  # cannot apply numeric chem eq
+
+    # Call retrieval_model_plain depending on chemical equilibrium
     if config_model['chemical_equilibrium'] == True:
-        wv_out, model_out, abundances, MMW, VMR = prt.retrieval_model_plain(atmo_obj, species, planet, save_abundances = True, *args, **kwargs)
-    
-    else: wv_out, model_out = prt.retrieval_model_plain(atmo_obj, species, planet, abundances = abundances, MMW = MMW, *args, **kwargs)
+        wv_out, model_out, abundances, MMW, VMR = prt.retrieval_model_plain(
+            atmo_obj,
+            species,
+            planet,
+            temperatures=temperatures,
+            pressures=int_dict['pressures'],
+            gravity=int_dict['gravity'],
+            P0=int_dict['P0'],
+            # p_cloud=int_dict['p_cloud'],
+            cloud=int_dict['p_cloud'],
+            R_pl=int_dict['R_pl'],
+            R_star=int_dict['R_star'],
+            C_to_O=float(config_model['C/O']),
+            Fe_to_H=float(config_model['Fe/H']),
+            gamma_scat=float(config_model['gamma_scat']),
+            kappa_factor=float(config_model['scat_factor']),
+            specie_2_lnlst=config_model['linelist_names'][mode],
+            kind_trans=config_model['kind_trans'],
+            dissociation=config_model['dissociation'],
+            fct_star=fct_star,
+            save_abundances=True,
+        )
+    else:
+        wv_out, model_out = prt.retrieval_model_plain(
+            atmo_obj,
+            species,
+            planet,
+            temperatures=temperatures,
+            pressures=int_dict['pressures'],
+            gravity=int_dict['gravity'],
+            P0=int_dict['P0'],
+            # p_cloud=int_dict['p_cloud'],
+            cloud=int_dict['p_cloud'],
+            R_pl=int_dict['R_pl'],
+            R_star=int_dict['R_star'],
+            C_to_O=float(config_model['C/O']),
+            Fe_to_H=float(config_model['Fe/H']),
+            gamma_scat=float(config_model['gamma_scat']),
+            kappa_factor=float(config_model['scat_factor']),
+            specie_2_lnlst=config_model['linelist_names'][mode],
+            kind_trans=config_model['kind_trans'],
+            dissociation=config_model['dissociation'],
+            fct_star=fct_star,
+            abundances=abundances,
+            MMW=MMW
+        )
+
 
     # saving wv_out, model_out
     if out_dir != None:

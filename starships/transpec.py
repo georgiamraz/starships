@@ -581,7 +581,7 @@ def build_trans_spectrum4(wave, flux, berv, RV_sys, vr, iOut,
                           tresh=3., tresh_lim=1., last_tresh=3, last_tresh_lim=1, noise=None, somme=False, norm=True,
                           flux_masked=None, flux_Sref=None, flux_norm=None, flux_norm_mo=None, master_out=None,
                           spec_trans=None, clean_ts=None, unberv_it=True, counting = True):
-    
+    # print('RV_sys build spectrum',RV_sys)
     rebuilt=np.ma.empty_like(flux)
     ratio=np.ma.empty_like(flux)
     
@@ -785,7 +785,11 @@ def build_trans_spectrum_mod2(wave, flux, master_out, pca, noise, #iOut=None,
 
 def build_trans_spectrum_mod_fast(flux, pca,
                                   plot=False, n_pca=2, n_comps=10, somme=False ):
-
+#     print("n_pca",n_pca)
+#     print("n_comps",n_comps)
+#     print('flux',flux)
+#     print('np.ma.flux',np.ma.median(flux,axis=-1)[:,:,None])
+    
     if n_pca > 0:
 
         full_ts, _, _ = remove_dem_pca_all(flux/np.ma.median(flux,axis=-1)[:,:,None], 
@@ -794,6 +798,8 @@ def build_trans_spectrum_mod_fast(flux, pca,
         full_ts = flux/np.ma.median(flux,axis=-1)[:,:,None]
     
     final_ts = quick_norm(full_ts, somme=somme, take_all=False)
+
+    # print("final_ts",np.shape(final_ts))
     
     return final_ts#, final_ts_std
 
