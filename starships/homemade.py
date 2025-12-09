@@ -797,13 +797,18 @@ def get_colors(cmap_str, nb, inv=False):
     return colors
 
 # ----------------------------------------------------------------
-
-
 def print_static(*var):
-
 #     print("\r", end="")
 #     print(*var, end="")
-    print(*var, end='\r', flush=True)
+#     print(*var)
+    print('\r', *var, flush=True, end="")
+
+#for older version of compute canada
+# def print_static(*var):
+
+# #     print("\r", end="")
+# #     print(*var, end="")
+#     print(*var, end='\r', flush=True)
 
 # ----------------------------------------------------------------
 
